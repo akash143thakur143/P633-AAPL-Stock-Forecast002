@@ -4,4 +4,5 @@ numpy
 matplotlib
 scikit-learn
 statsmodels
+plotly
 tensorflow
