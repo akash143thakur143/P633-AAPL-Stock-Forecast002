@@ -3,51 +3,52 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-# -------------------- PAGE CONFIG --------------------
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Apple Stock Forecast Dashboard",
     page_icon="📈",
     layout="wide"
 )
 
-# -------------------- CUSTOM CSS --------------------
+# ---------------- STYLE ----------------
 st.markdown("""
 <style>
 .main {
-    background-color: #F7FAFC;
-}
-.metric-box {
-    background-color: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.08);
-    text-align: center;
+    background-color: #F5F7FB;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------- LOAD DATA --------------------
+# ---------------- LOAD DATA ----------------
 @st.cache_data
 def load_data():
-    hist = pd.read_csv("AAPL (5).csv")
+    df = pd.read_csv("AAPL (5).csv")
     forecast = pd.read_csv("AAPL_30Day_Forecast.csv")
-    hist["Date"] = pd.to_datetime(hist["Date"])
+
+    df["Date"] = pd.to_datetime(df["Date"])
     forecast["Date"] = pd.to_datetime(forecast["Date"])
-    return hist, forecast
+
+    return df, forecast
 
 df, forecast_df = load_data()
 
-# -------------------- SIDEBAR --------------------
+# ---------------- SAFE FORECAST COLUMN ----------------
+forecast_col = None
+for col in forecast_df.columns:
+    if col.lower() not in ["date"]:
+        forecast_col = col
+        break
+
+# ---------------- SIDEBAR ----------------
 st.sidebar.title("📊 Apple Stock Dashboard")
-st.sidebar.markdown("**Project:** P-633 Apple Stock Forecast")
 menu = st.sidebar.radio(
     "Navigation",
     ["Overview", "Historical Analysis", "Forecast (30 Days)", "Insights"]
 )
 
-# -------------------- OVERVIEW --------------------
+# ---------------- OVERVIEW ----------------
 if menu == "Overview":
-    st.title("📈 Apple Inc. Stock Analysis & Forecast")
+    st.title("📈 Apple Inc. Stock Price Dashboard")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -56,28 +57,26 @@ if menu == "Overview":
     volatility = df["Adj Close"].std()
     trend = "Bullish 📈" if latest_price > avg_price else "Bearish 📉"
 
-    col1.metric("Latest Price ($)", round(latest_price, 2))
-    col2.metric("Average Price ($)", round(avg_price, 2))
-    col3.metric("Volatility", round(volatility, 2))
-    col4.metric("Market Trend", trend)
-
-    st.markdown("---")
+    col1.metric("Latest Price ($)", f"{latest_price:.2f}")
+    col2.metric("Average Price ($)", f"{avg_price:.2f}")
+    col3.metric("Volatility", f"{volatility:.2f}")
+    col4.metric("Trend", trend)
 
     fig = px.line(
         df,
         x="Date",
         y="Adj Close",
-        title="Apple Stock Price Trend",
+        title="Apple Adjusted Close Price Trend",
         template="plotly_white"
     )
     st.plotly_chart(fig, use_container_width=True)
 
-# -------------------- HISTORICAL ANALYSIS --------------------
+# ---------------- HISTORICAL ANALYSIS ----------------
 elif menu == "Historical Analysis":
     st.title("📊 Historical Market Analysis")
 
-    ma_20 = df["Adj Close"].rolling(20).mean()
-    ma_50 = df["Adj Close"].rolling(50).mean()
+    df["MA20"] = df["Adj Close"].rolling(20).mean()
+    df["MA50"] = df["Adj Close"].rolling(50).mean()
 
     fig = go.Figure()
 
@@ -91,35 +90,37 @@ elif menu == "Historical Analysis":
     ))
 
     fig.add_trace(go.Scatter(
-        x=df["Date"], y=ma_20,
-        line=dict(color="blue"),
-        name="MA 20"
+        x=df["Date"],
+        y=df["MA20"],
+        name="MA 20",
+        line=dict(color="blue")
     ))
 
     fig.add_trace(go.Scatter(
-        x=df["Date"], y=ma_50,
-        line=dict(color="green"),
-        name="MA 50"
+        x=df["Date"],
+        y=df["MA50"],
+        name="MA 50",
+        line=dict(color="green")
     ))
 
     fig.update_layout(
-        title="Candlestick Chart with Moving Averages",
+        title="Candlestick with Moving Averages",
         template="plotly_white",
         height=600
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 📦 Trading Volume")
     vol_fig = px.bar(
         df,
         x="Date",
         y="Volume",
+        title="Trading Volume",
         template="plotly_white"
     )
     st.plotly_chart(vol_fig, use_container_width=True)
 
-# -------------------- FORECAST --------------------
+# ---------------- FORECAST ----------------
 elif menu == "Forecast (30 Days)":
     st.title("🔮 30-Day Stock Price Forecast")
 
@@ -127,48 +128,49 @@ elif menu == "Forecast (30 Days)":
 
     fig.add_trace(go.Scatter(
         x=df["Date"],
-        y=df["Adj_Close"],
+        y=df["Adj Close"],
         name="Historical Price",
         line=dict(color="blue")
     ))
 
     fig.add_trace(go.Scatter(
         x=forecast_df["Date"],
-        y=forecast_df["Forecast"],
-        name="Forecast",
+        y=forecast_df[forecast_col],
+        name="Forecast Price",
         line=dict(color="green", dash="dash")
     ))
 
     fig.update_layout(
-        title="Apple Stock Price Forecast (Next 30 Days)",
+        title="Apple Stock Forecast (Next 30 Days)",
         template="plotly_white",
         height=600
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### 📄 Forecast Data")
+    st.subheader("📄 Forecast Data")
     st.dataframe(forecast_df)
 
-# -------------------- INSIGHTS --------------------
+# ---------------- INSIGHTS ----------------
 else:
-    st.title("📌 Key Insights & Conclusion")
+    st.title("📌 Key Insights")
 
-    st.success("""
-    ✔ Apple stock shows a long-term upward trend  
-    ✔ Moving averages confirm trend stability  
-    ✔ Forecast suggests moderate price growth  
-    ✔ Suitable for long-term investment analysis  
-    """)
+    st.success(
+        "• Apple stock shows a consistent upward trend\n"
+        "• Moving averages confirm trend stability\n"
+        "• Forecast indicates moderate future growth\n"
+        "• Useful for long-term investment decisions"
+    )
 
-    st.info("""
-    **Tools Used:**  
-    - Python  
-    - Pandas & NumPy  
-    - Streamlit  
-    - Plotly  
-    - Time Series Forecasting  
-    """)
+    st.info(
+        "Tools Used:\n"
+        "• Python\n"
+        "• Pandas\n"
+        "• Streamlit\n"
+        "• Plotly\n"
+        "• Time Series Forecasting"
+    )
 
-    st.markdown("📘 **Project:** P-633 Apple Stock Forecast")
     st.markdown("👨‍🎓 **Presented by:** Akash Thakur")
+    st.markdown("📘 **Project:** P-633 Apple Stock Forecast")
+
