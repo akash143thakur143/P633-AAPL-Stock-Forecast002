@@ -127,7 +127,7 @@ elif menu == "Forecast (30 Days)":
 
     fig.add_trace(go.Scatter(
         x=df["Date"],
-        y=df["Adj Close"],
+        y=df["Adj_Close"],
         name="Historical Price",
         line=dict(color="blue")
     ))
